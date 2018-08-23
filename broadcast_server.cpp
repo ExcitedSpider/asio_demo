@@ -1,3 +1,4 @@
+#pragma once
 #include<iostream>
 using std::cout;
 using std::endl;
@@ -17,6 +18,11 @@ using std::endl;
 #include<boost/function.hpp>
 #include<vector>
 #include<boost/atomic.hpp>
+#include <cereal/archives/json.hpp>
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/string.hpp>
+#include <sstream>
+#include "data.h"
 using namespace boost::asio;
 using boost::system::error_code;
 using ip::tcp;
@@ -31,6 +37,8 @@ private:
 	io_service& io;
 	boost::atomic<int> current_sock_amount;
 	ip::tcp::acceptor ac;
+
+
 
 	void accept_handler(sockptr sp,error_code ec) 
 	{
@@ -50,10 +58,21 @@ private:
 	}
 	void do_broadcast() 
 	{
-		cout << "start one broadcast" << endl;
+		//cout << "start one broadcast" << endl;
+		std::stringstream ss;
+		{
+			cereal::JSONOutputArchive oa(ss);
+			data d;
+			d.msg = "hello world msg!";
+			d.in.x = 2;
+			d.in.y = 3;
+			oa(d);
+		}
+		std::string content =  ss.str();
+		
 		for (int i = 0; i < current_sock_amount; ++i)
 		{
-			socks[i]->async_write_some(buffer("hello world!\0"), boost::bind(&BroadcastServer::write_handler, this, _1));
+			socks[i]->async_write_some(buffer(content), boost::bind(&BroadcastServer::write_handler, this, _1));
 		}
 		start_broadcast();
 	}

@@ -16,8 +16,13 @@ using std::endl;
 #include<boost/asio/high_resolution_timer.hpp>
 #include<string>
 #include<boost/function.hpp>
+#include <cereal/archives/json.hpp>
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/string.hpp>
 #include<vector>
 #include<boost/atomic.hpp>
+#include <sstream>
+#include "data.h"
 using namespace boost::asio;
 using boost::system::error_code;
 using ip::tcp;
@@ -32,7 +37,16 @@ private:
 	sockptr sock;
 
 	void do_read() {
-		cout << b.get() << endl;
+		std::string content = b.get();
+		std::stringstream ss(content);
+
+		{
+			cereal::JSONInputArchive ia(ss);
+			data d;
+			ia(d);
+			cout << d.msg<<'\t'<<d.in.x<<d.in.y<<endl;
+		}
+		
 		sock->async_read_some(buffer(b.get(), 1024 * sizeof(char)), boost::bind(&BroadcastClient::read_handler, this, _1));
 	}
 

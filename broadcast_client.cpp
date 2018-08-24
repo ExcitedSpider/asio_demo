@@ -40,6 +40,7 @@ private:
 	buffers b;
 	sockptr sock;
 	rand rng;
+	boost::asio::deadline_timer *timer;
 
 	void read()
 	{
@@ -62,7 +63,6 @@ private:
 			ia(d);
 			cout << d.msg<<'\t'<<d.in.x<<" "<<d.in.y<<" "<<d.in.z<<endl;
 		}
-		
 		read();
 	}
 
@@ -83,13 +83,15 @@ private:
 			msg.x = r%100;
 			oa(msg);
 		}
-		std::string content = ss.str();
-		sock->async_write_some(buffer(content), boost::bind(&BroadcastClient::write_handler, this, _1));
-		start_write();
+		std::string* content = new std::string(ss.str());
+		sock->async_write_some(buffer(*content), boost::bind(&BroadcastClient::write_handler, this, content , _1));
+		timer->expires_at(timer->expires_at() + boost::posix_time::seconds(1));
+		timer->async_wait(boost::bind(&BroadcastClient::write,this));
 	}
 
-	void write_handler(error_code ec)
+	void write_handler(std::string* content, error_code ec)
 	{
+		delete content;
 		if (ec) return;
 	}
 
@@ -97,7 +99,7 @@ private:
 	
 
 public:
-	BroadcastClient(io_service& io_) :io(io_), b(new char[1024]), sock(new ip::tcp::socket(io)),rng(time(0))
+	BroadcastClient(io_service& io_, boost::asio::deadline_timer *t) :io(io_), b(new char[1024]), sock(new ip::tcp::socket(io)),rng(time(0)),timer(t)
 	{
 		memset(b.get(), '\0', 1024);
 	};
@@ -109,15 +111,16 @@ public:
 	};
 	void start_write()
 	{
-		boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
-		t.async_wait(boost::bind(&BroadcastClient::write, this));
+		timer->async_wait(boost::bind(&BroadcastClient::write, this));
 		io.run();
 	}
 };
 
 int main() {
 	io_service io;
-	BroadcastClient client(io);
+	boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
+	BroadcastClient client(io,&t);
+	
 	client.start();
 	io.run();
 }

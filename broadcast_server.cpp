@@ -41,6 +41,8 @@ private:
 	boost::atomic<int> current_sock_amount;
 	ip::tcp::acceptor ac;
 	buffers buf[3];
+	boost::atomic<int> current_send_time;
+
 	void accept_handler(sockptr sp,error_code ec) 
 	{
 		if (ec)
@@ -51,16 +53,31 @@ private:
 		start_accept();
 	}
 
-	void write_handler(error_code ec)
+	void write_handler(std::string* msg, error_code ec)
 	{
+		++current_send_time;
+		if (current_send_time == current_sock_amount)
+		{
+			current_send_time.store(0);
+			delete msg;
+		}
 		if (ec)
 			cout << "send failed" << endl;
 		else
 			cout << "send success" << endl;
 	}
-	void do_broadcast() 
+	void do_broadcast(boost::asio::deadline_timer *t)
 	{
-		//cout << "start one broadcast" << endl;
+		cout << "start one broadcast" << endl;
+		
+		do_write();
+		
+		t->expires_at(t->expires_at() + boost::posix_time::seconds(1));
+		t->async_wait(boost::bind(&BroadcastServer::do_broadcast, this, t));
+	}
+
+	void do_write() 
+	{
 		std::stringstream ss;
 		{
 			cereal::JSONOutputArchive oa(ss);
@@ -71,13 +88,13 @@ private:
 			d.in.z = 4;
 			oa(d);
 		}
-		std::string content =  ss.str();
-		
+
+		std::string *msg = new std::string(ss.str());
+
 		for (int i = 0; i < current_sock_amount; ++i)
 		{
-			socks[i]->async_write_some(buffer(content), boost::bind(&BroadcastServer::write_handler, this, _1));
+			socks[i]->async_write_some(buffer(*msg), boost::bind(&BroadcastServer::write_handler, this, msg, _1));
 		}
-		start_broadcast();
 	}
 
 	
@@ -102,7 +119,7 @@ private:
 	}
 
 public:
-	BroadcastServer(io_service &io_) : io(io_), socks(MAX_SOCKET_AMOUNT), current_sock_amount(0), ac(io, tcp::endpoint(tcp::v4(), 666))
+	BroadcastServer(io_service &io_) : io(io_), socks(MAX_SOCKET_AMOUNT), current_sock_amount(0), ac(io, tcp::endpoint(tcp::v4(), 666)), current_send_time(0)
 	{
 		for (int i = 0; i < 3; i++) {
 			buf[i].reset(new char[BUFFER_SIZE]);
@@ -123,9 +140,8 @@ public:
 	/*
 	** start broadcast
 	*/
-	void start_broadcast() {
-		boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
-		t.async_wait(boost::bind(&BroadcastServer::do_broadcast, this));
+	void start_broadcast(boost::asio::deadline_timer *t) {
+		t->async_wait(boost::bind(&BroadcastServer::do_broadcast, this, t));
 		io.run();
 	}
 };
@@ -135,6 +151,7 @@ int main()
 	io_service io;
 	BroadcastServer server(io);
 	server.start_accept();
-	server.start_broadcast();
+	boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
+	server.start_broadcast(&t);
 	io.run();
 }

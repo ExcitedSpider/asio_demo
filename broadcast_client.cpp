@@ -12,9 +12,6 @@ using std::endl;
 #include<boost/smart_ptr.hpp>
 #include<boost/bind.hpp>
 #include<iostream>
-#include<boost/asio/steady_timer.hpp>
-#include<boost/asio/system_timer.hpp>
-#include<boost/asio/high_resolution_timer.hpp>
 #include<string>
 #include<boost/function.hpp>
 #include <cereal/archives/json.hpp>
@@ -40,7 +37,6 @@ private:
 	buffers b;
 	sockptr sock;
 	rand rng;
-	boost::asio::deadline_timer *timer;
 
 	void read()
 	{
@@ -51,6 +47,7 @@ private:
 	{
 		if (ec) return;
 		do_read();
+		do_write();
 	}
 
 	void do_read() {
@@ -70,10 +67,9 @@ private:
 	{
 		if (ec) return;
 		read();
-		start_write();
 	}
 
-	void write()
+	void do_write()
 	{
 		int r = rng();
 		std::stringstream ss;
@@ -85,8 +81,6 @@ private:
 		}
 		std::string* content = new std::string(ss.str());
 		sock->async_write_some(buffer(*content), boost::bind(&BroadcastClient::write_handler, this, content , _1));
-		timer->expires_at(timer->expires_at() + boost::posix_time::seconds(1));
-		timer->async_wait(boost::bind(&BroadcastClient::write,this));
 	}
 
 	void write_handler(std::string* content, error_code ec)
@@ -95,11 +89,8 @@ private:
 		if (ec) return;
 	}
 
-	
-	
-
 public:
-	BroadcastClient(io_service& io_, boost::asio::deadline_timer *t) :io(io_), b(new char[1024]), sock(new ip::tcp::socket(io)),rng(time(0)),timer(t)
+	BroadcastClient(io_service& io_) :io(io_), b(new char[1024]), sock(new ip::tcp::socket(io)),rng(time(0))
 	{
 		memset(b.get(), '\0', 1024);
 	};
@@ -109,17 +100,12 @@ public:
 		sock->async_connect(ep, boost::bind(&BroadcastClient::connect_handler, this, _1 ));
 		io.run();
 	};
-	void start_write()
-	{
-		timer->async_wait(boost::bind(&BroadcastClient::write, this));
-		io.run();
-	}
+
 };
 
 int main() {
 	io_service io;
-	boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
-	BroadcastClient client(io,&t);
+	BroadcastClient client(io);
 	
 	client.start();
 	io.run();

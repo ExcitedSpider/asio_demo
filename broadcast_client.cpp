@@ -1,3 +1,4 @@
+#pragma once
 #include<iostream>
 using std::cout;
 using std::endl;
@@ -17,12 +18,14 @@ using std::endl;
 #include<string>
 #include<boost/function.hpp>
 #include <cereal/archives/json.hpp>
-#include <cereal/archives/binary.hpp>
 #include <cereal/types/string.hpp>
 #include<vector>
 #include<boost/atomic.hpp>
 #include <sstream>
+#include <boost/random.hpp>
+#include <ctime>
 #include "data.h"
+#include "message.h"
 using namespace boost::asio;
 using boost::system::error_code;
 using ip::tcp;
@@ -31,22 +34,15 @@ using std::cout; using std::endl;
 class BroadcastClient {
 	typedef boost::shared_ptr<ip::tcp::socket> sockptr;
 	typedef boost::shared_array<char> buffers;
+	typedef boost::mt19937 rand;
 private:
 	io_service& io;
 	buffers b;
 	sockptr sock;
+	rand rng;
 
-	void do_read() {
-		std::string content = b.get();
-		std::stringstream ss(content);
-
-		{
-			cereal::JSONInputArchive ia(ss);
-			data d;
-			ia(d);
-			cout << d.msg<<'\t'<<d.in.x<<d.in.y<<endl;
-		}
-		
+	void read()
+	{
 		sock->async_read_some(buffer(b.get(), 1024 * sizeof(char)), boost::bind(&BroadcastClient::read_handler, this, _1));
 	}
 
@@ -56,14 +52,52 @@ private:
 		do_read();
 	}
 
+	void do_read() {
+		std::string content = b.get();
+		std::stringstream ss(content);
+
+		{
+			cereal::JSONInputArchive ia(ss);
+			data d;
+			ia(d);
+			cout << d.msg<<'\t'<<d.in.x<<" "<<d.in.y<<" "<<d.in.z<<endl;
+		}
+		
+		read();
+	}
+
 	void connect_handler(error_code ec)
 	{
 		if (ec) return;
-		sock->async_read_some(buffer(b.get(), 1024 * sizeof(char)), boost::bind(&BroadcastClient::read_handler, this, _1));
+		read();
+		start_write();
 	}
 
+	void write()
+	{
+		int r = rng();
+		std::stringstream ss;
+		{
+			cereal::JSONOutputArchive oa(ss);
+			message msg;
+			msg.x = r%100;
+			oa(msg);
+		}
+		std::string content = ss.str();
+		sock->async_write_some(buffer(content), boost::bind(&BroadcastClient::write_handler, this, _1));
+		start_write();
+	}
+
+	void write_handler(error_code ec)
+	{
+		if (ec) return;
+	}
+
+	
+	
+
 public:
-	BroadcastClient(io_service& io_) :io(io_), b(new char[1024]), sock(new ip::tcp::socket(io))
+	BroadcastClient(io_service& io_) :io(io_), b(new char[1024]), sock(new ip::tcp::socket(io)),rng(time(0))
 	{
 		memset(b.get(), '\0', 1024);
 	};
@@ -73,6 +107,12 @@ public:
 		sock->async_connect(ep, boost::bind(&BroadcastClient::connect_handler, this, _1 ));
 		io.run();
 	};
+	void start_write()
+	{
+		boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
+		t.async_wait(boost::bind(&BroadcastClient::write, this));
+		io.run();
+	}
 };
 
 int main() {

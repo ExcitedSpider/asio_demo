@@ -1,13 +1,11 @@
 #pragma once
-#include <cereal/archives/binary.hpp>
-
-#include <string>
 struct innerdata {
 	int x;
 	int y;
+	int z;
 	template<class Archive>
 	void serialize(Archive & ar) {
-		ar(cereal::make_nvp("x", x), cereal::make_nvp("y", y));
+		ar(cereal::make_nvp("x", x), cereal::make_nvp("y", y), cereal::make_nvp("z", z));
 	}
 	innerdata() :x(0), y(0) {};
 };

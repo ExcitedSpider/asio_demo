@@ -1,11 +1,29 @@
 #pragma once
-struct message
+#include"Player.h"
+#include"CommonSetting.h"
+#include <cereal/types/string.hpp>
+struct client_message
 {
-	int x;
+	Player player;
+
 	template<class Archive>
 	void serialize(Archive & ar)
 	{
-		ar(cereal::make_nvp("x", x));
+		ar(player);
 	}
-	message() :x(0) {};
+
+	client_message(Player p) : player(p) {};
+};
+struct broadcast_message
+{
+	CommonSetting cs;
+
+	template<class Archive>
+	void serialize(Archive & ar)
+	{
+		ar(cs);
+	}
+
+	broadcast_message(CommonSetting cs_) : cs(cs_) {}
+	broadcast_message() {};
 };

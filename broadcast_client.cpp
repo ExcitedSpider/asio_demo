@@ -14,9 +14,8 @@ using std::endl;
 #include<iostream>
 #include<string>
 #include<boost/function.hpp>
-#include <cereal/archives/json.hpp>
-#include <cereal/archives/binary.hpp>
-#include <cereal/types/string.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 #include<vector>
 #include<boost/atomic.hpp>
 #include <sstream>
@@ -50,24 +49,24 @@ private:
 
 	void read()
 	{
-		sock->async_read_some(buffer(b.get(), BUFFER_SIZE * sizeof(char)), boost::bind(&BroadcastClient::read_handler, this, _1));
+		boost::asio::streambuf* buf = new boost::asio::streambuf();
+		boost::asio::streambuf::mutable_buffers_type* bufs = &(buf->prepare(BUFFER_SIZE));
+		sock->async_read_some(*bufs, boost::bind(&BroadcastClient::read_handler, this, _1, _2, buf));
 	}
 
-	void read_handler(error_code ec)
+	void read_handler(error_code ec, std::size_t bytes_transferred, boost::asio::streambuf* buf)
 	{
 		if (ec) return;
-		do_read();
+		do_read(buf,bytes_transferred);
 		do_write();
 	}
 
-	void do_read() {
-		std::string content = b.get();
-		std::stringstream ss(content);
-
+	void do_read(boost::asio::streambuf* buf, std::size_t bytes_transferred) {
+		buf->commit(bytes_transferred);
 		{
-			cereal::JSONInputArchive ia(ss);
+			boost::archive::binary_iarchive ia(*buf);
 			broadcast_message msg;
-			ia(msg);
+			ia >> msg;
 			if (is_callback_setted)
 			{
 				on_status_change_func(msg.cs, this);
@@ -78,6 +77,9 @@ private:
 			}
 			
 		}
+
+		delete buf;
+
 		read();
 	}
 
@@ -90,22 +92,21 @@ private:
 	void do_write()
 	{
 		int r = rng();
-		std::stringstream ss;
+		boost::asio::streambuf *buf = new boost::asio::streambuf();
 		{
-			cereal::JSONOutputArchive oa(ss);
+			boost::archive::binary_oarchive oa(*buf);
 			client_message msg(p);
 			std::stringstream ss_;
 			ss_ << "random_name" << rng() % 100;
 			p.name = ss_.str();
-			oa(msg);
+			oa << msg;
 		}
-		std::string* content = new std::string(ss.str());
-		sock->async_write_some(buffer(*content), boost::bind(&BroadcastClient::write_handler, this, content , _1));
+		sock->async_write_some(buf->data(), boost::bind(&BroadcastClient::write_handler, this, buf , _1));
 	}
 
-	void write_handler(std::string* content, error_code ec)
+	void write_handler(boost::asio::streambuf *buf, error_code ec)
 	{
-		delete content;
+		delete buf;
 		if (ec) return;
 	}
 

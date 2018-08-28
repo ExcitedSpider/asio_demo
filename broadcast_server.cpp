@@ -19,9 +19,8 @@ using std::endl;
 #include<boost/function.hpp>
 #include<vector>
 #include<boost/atomic.hpp>
-#include <cereal/archives/json.hpp>
-#include <cereal/archives/binary.hpp>
-#include <cereal/types/string.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 #include <sstream>
 #include <boost/function.hpp>
 #include "message.h"
@@ -63,13 +62,13 @@ private:
 			start_accept();
 	}
 
-	void write_handler(std::string* msg, error_code ec)
+	void write_handler(boost::asio::streambuf* buf, error_code ec)
 	{
 		++current_send_time;
 		if (current_send_time == current_sock_amount)
 		{
 			current_send_time.store(0);
-			delete msg;
+			delete buf;
 		}
 	}
 	void do_broadcast(boost::asio::deadline_timer *t)
@@ -88,36 +87,37 @@ private:
 		cs.networkCnt = current_sock_amount;
 		for (int i = 0; i < current_sock_amount; ++i)
 		{
-			std::stringstream ss;
+			boost::asio::streambuf* buf = new boost::asio::streambuf();
 			{
-				cereal::JSONOutputArchive oa(ss);
+				boost::archive::binary_oarchive oa(*buf);
 				broadcast_message msg(cs);
 				msg.cs.networkID = i;
-				oa(msg);
+				oa<<msg;
 			}
-			std::string *msg = new std::string(ss.str());
-			socks[i]->async_write_some(buffer(*msg), boost::bind(&BroadcastServer::write_handler, this, msg, _1));
+			cout<<buf->size()<<endl;
+			socks[i]->async_write_some(buf->data(), boost::bind(&BroadcastServer::write_handler, this, buf, _1));
 		}
 	}
 
 	
-	void read_handler(int sockid, error_code ec) 
+	void read_handler(int sockid, error_code ec, std::size_t bytes_transferred, boost::asio::streambuf* buf)
 	{
 		if (ec) return;
-		{
-			std::stringstream ss(buf[sockid].get());
-			buf[sockid].reset(new char[BUFFER_SIZE]);
-			memset(buf[sockid].get(), '\0', BUFFER_SIZE);
-			cereal::JSONInputArchive ia(ss);
-			client_message msg;
-			ia(msg);
-		}
+		buf->commit(bytes_transferred);
+		boost::archive::binary_iarchive ia(*buf);
+		client_message msg;
+		ia >> msg;
+		players[sockid + 1] = msg.player;
+
+		delete buf;
+
 		read(sockid);
 	}
 
 	void read(int i)
 	{
-		socks[i]->async_read_some(buffer(buf[i].get(), BUFFER_SIZE * sizeof(char)), boost::bind(&BroadcastServer::read_handler, this, i, _1));
+		boost::asio::streambuf* buf = new boost::asio::streambuf();
+		socks[i]->async_read_some(buf->prepare(BUFFER_SIZE), boost::bind(&BroadcastServer::read_handler, this, i, _1,_2, buf));
 	}
 
 	void merge()

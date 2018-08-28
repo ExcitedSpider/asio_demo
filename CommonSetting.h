@@ -1,5 +1,4 @@
 #pragma once
-#include <cereal/archives/json.hpp>
 #include "Player.h"
 
 /*
@@ -14,8 +13,13 @@ struct CommonSetting {
 	Player player[5];
 
 	template<class Archive>
-	void serialize(Archive& ar)
+	void serialize(Archive& ar, const unsigned int version)
 	{
-		ar(player, networkCnt, networkID);
+		ar & player;
+		ar & networkID;
+		ar & networkCnt;
 	}
+
+	friend class boost::serialization::access;
+
 };

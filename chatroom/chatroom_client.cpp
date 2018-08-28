@@ -119,10 +119,11 @@ void message_listener(boost::shared_ptr<ChatMessage> mp)
 	cout << mp->playerName << "\t\t" << mp->message << endl;
 }
 
-int main()
+ChatroomClient* client_start()
 {
 	io_service io;
-	ChatroomClient client(io);
-	client.set_on_recieve(message_listener);
-	client.start("127.0.0.1");
+	ChatroomClient* client = new ChatroomClient(io);
+	client->set_on_recieve(message_listener);
+	client->start("127.0.0.1");
+	return client;
 }

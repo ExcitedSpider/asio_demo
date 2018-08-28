@@ -87,7 +87,6 @@ private:
 		boost::archive::binary_oarchive oa(buf);
 		oa << *msg;
 		auto cb = buf.data();
-		cout << cb.size()<<endl;
 		for (int i = 0; i < current_sock_amount; ++i)
 		{
 			socks[i]->async_write_some(buffer(cb), boost::bind(&ChatroomServer::write_handler, this, _1));
@@ -117,8 +116,6 @@ private:
 			return;
 		++current_sock_amount;
 
-		post_helloworld();
-
 		do_read(sp);
 		start_accept();
 	}
@@ -140,7 +137,6 @@ private:
 	void read_handler(sockptr sp, error_code ec, size_t bites_trans)
 	{
 		buf.commit(bites_trans);
-		buf.size();
 		boost::archive::binary_iarchive ia(buf);
 		msg_ptr mp(new ChatMessage);
 		ia >> *mp;
@@ -158,11 +154,12 @@ void message_listener(boost::shared_ptr<ChatMessage> mp)
 	cout << mp->playerName<<"\t\t"<< mp->message << endl;
 }
 
-void main()
+ChatroomServer* server_start()
 {
 	boost::asio::io_service io;
-	ChatroomServer server(io);
-	server.set_on_recieve(message_listener);
-	server.start_accept();
+	ChatroomServer* server = new ChatroomServer(io);
+	server->set_on_recieve(message_listener);
+	server->start_accept();
 	io.run();
+	return server;
 }

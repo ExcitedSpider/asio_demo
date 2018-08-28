@@ -44,15 +44,26 @@ private:
 	bool is_on_recieve_setted;
 
 public:
+	/*
+	** 构造函数。
+	** 参数1：io_servce
+	*/
 	ChatroomClient(io_service &io_) :io(io_), is_on_recieve_setted(false), sock(new ip::tcp::socket(io)) {};
 
+	/*
+	** 开启tcp连接
+	** 之后需要io_serce.run()
+	*/
 	void start(std::string ipv4)
 	{
 		ip::tcp::endpoint ep(ip::address::from_string(ipv4), 667);
 		sock->async_connect(ep, boost::bind(&ChatroomClient::connect_handler, this, _1));
 		io.run();
 	};
-
+	
+	/*
+	** 发送一条消息
+	*/
 	void post(ChatMessage msg)
 	{
 		boost::archive::binary_oarchive oa(buf);
@@ -60,6 +71,10 @@ public:
 		sock->async_write_some(buf.prepare(buf.size()), boost::bind(&ChatroomClient::write_handler, this, _1));
 	}
 
+
+	/*
+	** 设置回调函数
+	*/
 	void set_on_recieve(boost::function<void(msg_ptr)> call_back_func)
 	{
 		if (!is_on_recieve_setted)
@@ -113,17 +128,31 @@ private:
 	}
 };
 
-void message_listener(boost::shared_ptr<ChatMessage> mp)
+/*
+** 这个是回调函数的示例
+** 每次有新消息到达时就会调用这个函数
+** mp：消息类ChatMessage的指针，
+*/
+void client_message_listener(boost::shared_ptr<ChatMessage> mp)
 {
 	cout << "[player]\t\t[message]" << endl;
 	cout << mp->playerName << "\t\t" << mp->message << endl;
 }
 
-ChatroomClient* client_start()
+/*
+** 这个是启动方法
+** 参数1：回调函数
+** 建议开一个新线程来执行本方法
+*/
+ChatroomClient* client_start(std::string ipv4, boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve)
 {
 	io_service io;
 	ChatroomClient* client = new ChatroomClient(io);
-	client->set_on_recieve(message_listener);
-	client->start("127.0.0.1");
+	client->set_on_recieve(on_recieve);
+	client->start(ipv4);
 	return client;
+}
+
+int main() {
+	client_start("127.0.0.1", client_message_listener);
 }

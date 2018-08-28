@@ -53,6 +53,20 @@ public:
 		io.run();
 	};
 
+	void post(ChatMessage msg)
+	{
+		boost::archive::binary_oarchive oa(buf);
+		oa << msg;
+		sock->async_write_some(buf.prepare(buf.size()), boost::bind(&ChatroomClient::write_handler, this, _1));
+	}
+
+	void set_on_recieve(boost::function<void(msg_ptr)> call_back_func)
+	{
+		if (!is_on_recieve_setted)
+			is_on_recieve_setted = true;
+		on_recieve = call_back_func;
+	}
+
 private:
 
 	void connect_handler(error_code ec)
@@ -70,18 +84,45 @@ private:
 	void read_handler(error_code ec, size_t bites_trans)
 	{
 		buf.commit(bites_trans);
+		buf.size();
 		boost::archive::binary_iarchive ia(buf);
-		ChatMessage msg;
-		ia >> msg;
-		cout << "[player]\t\t[message]" << endl;
-		cout << msg.playerName << "\t\t" << msg.message << endl;
+		msg_ptr mp(new ChatMessage);
+		ia >> *mp;
+		buf.consume(bites_trans);
+		if (is_on_recieve_setted)
+			on_recieve(mp);
+		else
+			cout << "on_recieve_func hasn't been setted, call ChatroomServer::set_on_recieve() to set" << endl;
 		read();
 	}
+
+	//use only for debug
+	//you are not supposed to use this
+	void post_helloworld()
+	{
+		ChatMessage msg;
+		msg.message = "Hello Client";
+		msg.playerName = "Autumn";
+		post(msg);
+	}
+
+	void write_handler(error_code ec)
+	{
+		if (ec)
+			return;
+	}
 };
+
+void message_listener(boost::shared_ptr<ChatMessage> mp)
+{
+	cout << "[player]\t\t[message]" << endl;
+	cout << mp->playerName << "\t\t" << mp->message << endl;
+}
 
 int main()
 {
 	io_service io;
 	ChatroomClient client(io);
+	client.set_on_recieve(message_listener);
 	client.start("127.0.0.1");
 }

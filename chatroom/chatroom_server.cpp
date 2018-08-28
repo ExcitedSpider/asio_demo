@@ -87,6 +87,7 @@ private:
 		boost::archive::binary_oarchive oa(buf);
 		oa << *msg;
 		auto cb = buf.data();
+		cout << cb.size()<<endl;
 		for (int i = 0; i < current_sock_amount; ++i)
 		{
 			socks[i]->async_write_some(buffer(cb), boost::bind(&ChatroomServer::write_handler, this, _1));
@@ -116,26 +117,34 @@ private:
 			return;
 		++current_sock_amount;
 
-		ChatMessage msg2;
-		msg2.message = "Hello World again";
-		msg2.playerName = "QE";
-		post(msg2);
-
+		post_helloworld();
 
 		do_read(sp);
+		start_accept();
 	}
 	void do_read(sockptr sp)
 	{
 		sp->async_read_some(buf.prepare(BUFFER_SIZE),boost::bind(&ChatroomServer::read_handler, this, sp,  _1, _2));
 	}
 
+	//use only for debug
+	//you are not supposed to use this
+	void post_helloworld()
+	{
+		ChatMessage msg;
+		msg.message = "Hello Server";
+		msg.playerName = "QE";
+		post(msg);
+	}
+
 	void read_handler(sockptr sp, error_code ec, size_t bites_trans)
 	{
 		buf.commit(bites_trans);
+		buf.size();
 		boost::archive::binary_iarchive ia(buf);
-		ChatMessage msg;
-		ia >> msg;
-		msg_ptr mp(new ChatMessage(msg));
+		msg_ptr mp(new ChatMessage);
+		ia >> *mp;
+		buf.consume(bites_trans);
 		ml.push_back(mp);
 		broadcast();
 
@@ -149,24 +158,11 @@ void message_listener(boost::shared_ptr<ChatMessage> mp)
 	cout << mp->playerName<<"\t\t"<< mp->message << endl;
 }
 
-void post_thread_handler(io_service& io, ChatroomServer& server)
-{
-	
-
-}
-
 void main()
 {
 	boost::asio::io_service io;
 	ChatroomServer server(io);
 	server.set_on_recieve(message_listener);
 	server.start_accept();
-
-	/*----------示例产生一条消息并post-------*/
-	ChatMessage msg;
-	msg.message = "Hello World";
-	msg.playerName = "QE";
-	server.post(msg);
-
 	io.run();
 }

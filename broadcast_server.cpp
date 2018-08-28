@@ -6,7 +6,8 @@ using std::endl;
 #define BOOST_ASIO_DISABLE_STD_CHRONO
 #define BOOST_THREAD_VERSION 5
 #define MAX_SOCKET_AMOUNT 3
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 1024
+#define CLOCK_TIMER boost::posix_time::milliseconds(50)
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
 #include<boost/smart_ptr.hpp>
@@ -77,7 +78,7 @@ private:
 		
 		do_write();
 		
-		t->expires_at(t->expires_at() + boost::posix_time::seconds(1));
+		t->expires_at(t->expires_at() + CLOCK_TIMER);
 		t->async_wait(boost::bind(&BroadcastServer::do_broadcast, this, t));
 	}
 
@@ -202,7 +203,7 @@ void start(boost::function<void(CommonSetting cs, BroadcastServer* clientptr)> c
 	BroadcastServer server(io);
 	server.on_server_status_change(call_back_func);
 	server.start_accept();
-	boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
+	boost::asio::deadline_timer t(io, CLOCK_TIMER);
 	server.start_broadcast(&t);
 	io.run();
 }

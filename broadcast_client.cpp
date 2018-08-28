@@ -6,7 +6,7 @@ using std::endl;
 #define BOOST_ASIO_DISABLE_STD_CHRONO
 #define BOOST_THREAD_VERSION 5
 #define MAX_SOCKET_AMOUNT 4
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 2048
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
 #include<boost/smart_ptr.hpp>

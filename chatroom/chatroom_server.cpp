@@ -79,8 +79,6 @@
 		return;
 	++current_sock_amount;
 
-	post_helloworld();
-
 	do_read(sp);
 	start_accept();
 }

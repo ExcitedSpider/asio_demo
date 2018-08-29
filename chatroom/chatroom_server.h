@@ -95,5 +95,5 @@ void server_message_listener(boost::shared_ptr<ChatMessage> mp);
 ** 参数1：ip地址，参数2：回调函数
 ** 建议开一个新线程来执行本方法
 */
-ChatroomServer* server_start_qe(boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve);
+void server_start_qe(boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve, ChatroomServer *ptr)
 

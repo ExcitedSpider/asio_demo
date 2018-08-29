@@ -102,12 +102,12 @@ void client_message_listener(boost::shared_ptr<ChatMessage> mp)
 ** 参数1：回调函数
 ** 建议开一个新线程来执行本方法
 */
-ChatroomClient * client_start(std::string ipv4, boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve)
+void client_start(std::string ipv4, boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve, ChatroomClient* ptr)
 {
 	io_service io;
 	ChatroomClient* client = new ChatroomClient(io);
 	client->set_on_recieve(on_recieve);
 	client->start(ipv4);
-	return client;
+	ptr = client;
 }
 

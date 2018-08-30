@@ -78,6 +78,8 @@ public:
 	//you are not supposed to use this
 	void post_helloworld();
 
+	void write_handler(error_code ec, string * str);
+
 private:
 
 	void connect_handler(error_code ec);

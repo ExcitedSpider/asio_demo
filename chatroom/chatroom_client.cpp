@@ -17,7 +17,7 @@
 {
 	ip::tcp::endpoint ep(ip::address::from_string(ipv4), 667);
 	sock->async_connect(ep, boost::bind(&ChatroomClient::connect_handler, this, _1));
-	boost::thread timingThread(boost::bind(&ChatroomServer::timing_thread_func, this));
+	
 }
 
  void ChatroomClient::timing_thread_func()
@@ -28,7 +28,7 @@
 
  void ChatroomClient::timer_handler(error_code ec, deadline_timer* timer)
   {
-	  // cout << "start one timer" << endl;
+	   //cout << "start one timer" << endl;
 	  timer->expires_at(timer->expires_at() + CLOCK_TIME);
 	  timer->async_wait(boost::bind(&ChatroomClient::timer_handler, this, _1, timer));
 	  //io.run();
@@ -45,8 +45,7 @@
 	  boost::archive::text_oarchive oa(*ss);
 	  oa << msg;
 	  string * str = new string(ss->str());
-	  boost::shared_ptr<std::string> content(str);
-	  sock->async_write_some(buffer(*content), boost::bind(&ChatroomClient::write_handler, this, _1));
+	  sock->async_write_some(buffer(*str), boost::bind(&ChatroomClient::write_handler, this, _1, str));
 	  io.poll();
 }
 
@@ -67,6 +66,7 @@
 		return;
 	read();
 	post_helloworld();
+	boost::thread timingThread(boost::bind(&ChatroomClient::timing_thread_func, this));
 }
 
   void ChatroomClient::read()
@@ -99,10 +99,9 @@
 	post(msg);
 }
 
-  void ChatroomClient::write_handler(error_code ec)
+  void ChatroomClient::write_handler(error_code ec, string* str)
 {
-	  
-	  buf.consume(buf.size());
+	  cout << "write handler" << endl;
 	if (ec)
 		return;
 }

@@ -5,6 +5,7 @@ using std::endl;
 
 #define BUFFER_SIZE 1024
 #define MAX_SOCKET_AMOUNT 4
+#define CLOCK_TIME boost::posix_time::milliseconds(100)
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
 #include<boost/smart_ptr.hpp>
@@ -57,7 +58,10 @@ public:
 	** 开启tcp连接
 	** 之后需要io_serce.poll()
 	*/
-	void start(std::string ipv4);;
+	void start(std::string ipv4);
+	void timing_thread_func();
+	void timer_handler(error_code ec, deadline_timer * timer);
+	;
 	
 	/*
 	** 发送一条消息

@@ -4,7 +4,7 @@ using std::cout;
 using std::endl;
 
 #define BOOST_ASIO_DISABLE_STD_CHRONO
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 1024
 #define MAX_SOCKET_AMOUNT 4
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
@@ -23,6 +23,9 @@ using std::endl;
 #include <boost/function.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <sstream>
 #include "chat_message.h"
 #include <list>
 
@@ -38,6 +41,7 @@ class ChatroomServer
 	typedef boost::shared_array<char> buffers;
 	typedef list<boost::shared_ptr<ChatMessage>> msglist;
 	typedef boost::shared_ptr<ChatMessage> msg_ptr;
+	typedef boost::shared_ptr<boost::asio::streambuf> buffer;
 
 private:
 	sptrvec socks;
@@ -58,7 +62,7 @@ public:
 	ChatroomServer(io_service &io_);
 	/*
 	** 开启接收tcp连接
-	** 之后需要io_serce.run()
+	** 之后需要io_serce.poll()
 	*/
 	void start_accept();
 
@@ -72,16 +76,20 @@ public:
 	*/
 	void set_on_recieve(boost::function<void(msg_ptr)> call_back_func);
 
+	void do_read(int sockid);
+
+	void post_helloworld();
+
+	void read_handler(int sockid, boost::shared_array<char> charbuf, error_code ec, std::size_t bytes_transferred);
+
+
 private:
 
 	void broadcast();
-	void write_handler(error_code ec);
-	void accept_handler(sockptr sp, error_code ec);
-	void do_read(sockptr sp);
-	//use only for debug
-	//you are not supposed to use this
-	void post_helloworld();
-	void read_handler(sockptr sp, error_code ec, size_t bites_trans);
+	void write_handler(error_code ec, buffer nbuf);
+
+	void accept_handler(int sockid, error_code ec);
+	
 };
 /*
 ** 这个是回调函数的示例
@@ -95,5 +103,4 @@ void server_message_listener(boost::shared_ptr<ChatMessage> mp);
 ** 参数1：ip地址，参数2：回调函数
 ** 建议开一个新线程来执行本方法
 */
-void server_start_qe(boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve, ChatroomServer *ptr)
-
+ChatroomServer* server_start(boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve);

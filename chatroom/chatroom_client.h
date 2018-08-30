@@ -3,7 +3,7 @@
 using std::cout;
 using std::endl;
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 1024
 #define MAX_SOCKET_AMOUNT 4
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
@@ -22,6 +22,9 @@ using std::endl;
 #include <boost/function.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <sstream>
 #include "chat_message.h"
 #include <list>
 
@@ -52,7 +55,7 @@ public:
 
 	/*
 	** 开启tcp连接
-	** 之后需要io_serce.run()
+	** 之后需要io_serce.poll()
 	*/
 	void start(std::string ipv4);;
 	
@@ -67,14 +70,16 @@ public:
 	*/
 	void set_on_recieve(boost::function<void(msg_ptr)> call_back_func);
 
+	// use only for debug
+	//you are not supposed to use this
+	void post_helloworld();
+
 private:
 
 	void connect_handler(error_code ec);
 	void read();
 	void read_handler(error_code ec, size_t bites_trans);
-	//use only for debug
-	//you are not supposed to use this
-	void post_helloworld();
+	
 
 	void write_handler(error_code ec);
 };
@@ -91,5 +96,5 @@ void client_message_listener(boost::shared_ptr<ChatMessage> mp);
 ** 参数1：回调函数
 ** 建议开一个新线程来执行本方法
 */
-void client_start(std::string ipv4, boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve, ChatroomClient* ptr);
+ChatroomClient* client_start(std::string ipv4, boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve);
 

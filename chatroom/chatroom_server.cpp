@@ -14,14 +14,15 @@
 
 /*
 ** 开启接收tcp连接
-** 之后需要io_serce.run()
+** 之后需要io_serce.poll()
 */
 
  void ChatroomServer::start_accept()
 {
 	sockptr s(new ip::tcp::socket(io));
 	socks[current_sock_amount] = s;
-	ac.async_accept(*socks[current_sock_amount], boost::bind(&ChatroomServer::accept_handler, this, socks[current_sock_amount], _1));
+	cout<<current_sock_amount.load()<<endl;
+	ac.async_accept(*socks[current_sock_amount], boost::bind(&ChatroomServer::accept_handler, this, this->current_sock_amount.load(), _1));
 }
 
  void ChatroomServer::post(ChatMessage msg)
@@ -47,45 +48,50 @@
 {
 	msg_ptr msg = ml.front();
 	ml.pop_front();
-	boost::archive::binary_oarchive oa(buf);
-	oa << *msg;
-	auto cb = buf.data();
-	for (int i = 0; i < current_sock_amount; ++i)
-	{
-		socks[i]->async_write_some(buffer(cb), boost::bind(&ChatroomServer::write_handler, this, _1));
-	}
-	io.poll();
-	cout << "broadcast one msg, left : " << ml.size() << " msg(s). " << endl;
 	if (is_on_recieve_setted)
 		on_recieve(msg);
 	else
 		cout << "on_recieve_func hasn't been setted, call ChatroomServer::set_on_recieve() to set" << endl;
-	if (ml.size())
-		broadcast();
+	
+	for (int i = 0; i < current_sock_amount; ++i)
+	{
+		buffer nbuf (new streambuf());
+		boost::archive::binary_oarchive oa(*nbuf);
+		oa << *msg;
+		socks[i]->async_write_some(nbuf->data(), boost::bind(&ChatroomServer::write_handler, this, _1, nbuf));
+	}
+	io.poll();
+	cout << "broadcast one msg, left : " << ml.size() << " msg(s). " << endl;
+	
+	
+//	if (ml.size())
+//		broadcast();
 
 }
 
- void ChatroomServer::write_handler(error_code ec)
+ void ChatroomServer::write_handler(error_code ec, buffer nbuf)
 {
+	 //delete nbuf;
 	if (ec)
 		return;
-
 }
 
- void ChatroomServer::accept_handler(sockptr sp, error_code ec)
+ void ChatroomServer::accept_handler(int sockid, error_code ec)
 {
-	cout << "a new player from " << sp->remote_endpoint().address() << "  join chatroom" << endl;
+	
+	cout << "a new player from " << socks[sockid]->remote_endpoint().address() << "  join chatroom" << endl;
 	if (ec)
 		return;
 	++current_sock_amount;
 
-	do_read(sp);
+	do_read(sockid);
 	start_accept();
 }
 
- void ChatroomServer::do_read(sockptr sp)
+ void ChatroomServer::do_read(int sockid)
 {
-	sp->async_read_some(buf.prepare(BUFFER_SIZE), boost::bind(&ChatroomServer::read_handler, this, sp, _1, _2));
+	boost::shared_array<char> charbuf(new char[BUFFER_SIZE]);
+	socks[sockid]->async_read_some(boost::asio::buffer(charbuf.get(), BUFFER_SIZE), boost::bind(&ChatroomServer::read_handler, this, sockid, charbuf, _1, _2));
 }
 
 //use only for debug
@@ -99,17 +105,29 @@
 	post(msg);
 }
 
- void ChatroomServer::read_handler(sockptr sp, error_code ec, size_t bites_trans)
+ void ChatroomServer::read_handler(int sockid, boost::shared_array<char> charbuf, error_code ec, std::size_t bytes_transferred)
 {
-	buf.commit(bites_trans);
-	boost::archive::binary_iarchive ia(buf);
-	msg_ptr mp(new ChatMessage);
-	ia >> *mp;
-	buf.consume(bites_trans);
-	ml.push_back(mp);
-	broadcast();
+	 if (ec)
+		 return;
+	 
+	 try {
+		std::stringstream ss;
+		ss << charbuf.get();
+		 boost::archive::text_iarchive ia(ss); // an exception here
+		 msg_ptr mp(new ChatMessage);
+		 ia >> *mp;
+		 //delete nbuf;
+		 ml.push_back(mp);
+		 broadcast();
+		 do_read(sockid);
+	 }
+	 catch (boost::archive::archive_exception e)
+	 {
+		 cout << "read message failed" << endl;
+		 do_read(sockid);
+	 }
 
-	do_read(sp);
+	
 }
 
 /*
@@ -128,12 +146,12 @@ void server_message_listener(boost::shared_ptr<ChatMessage> mp)
 ** 参数1：ip地址，参数2：回调函数
 ** 建议开一个新线程来执行本方法
 */
-void server_start_qe(boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve, ChatroomServer *ptr)
+ChatroomServer* server_start(boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve)
 {
-	boost::asio::io_service io;
-	ChatroomServer* server = new ChatroomServer(io);
+	boost::asio::io_service *io = new boost::asio::io_service;
+	ChatroomServer* server = new ChatroomServer(*io);
 	server->set_on_recieve(on_recieve);
 	server->start_accept();
-	io.run();
-	ptr = server;
+	io->poll();
+	return server;
 }

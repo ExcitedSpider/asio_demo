@@ -10,14 +10,13 @@
 
 /*
 ** 开启tcp连接
-** 之后需要io_serce.run()
+** 之后需要io_serce.poll()
 */
 
   void ChatroomClient::start(std::string ipv4)
 {
 	ip::tcp::endpoint ep(ip::address::from_string(ipv4), 667);
 	sock->async_connect(ep, boost::bind(&ChatroomClient::connect_handler, this, _1));
-	io.run();
 }
 
 /*
@@ -26,9 +25,13 @@
 
   void ChatroomClient::post(ChatMessage msg)
 {
-	boost::archive::binary_oarchive oa(buf);
-	oa << msg;
-	sock->async_write_some(buf.prepare(buf.size()), boost::bind(&ChatroomClient::write_handler, this, _1));
+	  boost::shared_ptr<std::stringstream> ss(new std::stringstream);
+	  boost::archive::text_oarchive oa(*ss);
+	  oa << msg;
+	  string * str = new string(ss->str());
+	  boost::shared_ptr<std::string> content(str);
+	  sock->async_write_some(buffer(*content), boost::bind(&ChatroomClient::write_handler, this, _1));
+	  io.poll();
 }
 
 /*
@@ -47,6 +50,7 @@
 	if (ec)
 		return;
 	read();
+	post_helloworld();
 }
 
   void ChatroomClient::read()
@@ -57,7 +61,6 @@
   void ChatroomClient::read_handler(error_code ec, size_t bites_trans)
 {
 	buf.commit(bites_trans);
-	buf.size();
 	boost::archive::binary_iarchive ia(buf);
 	msg_ptr mp(new ChatMessage);
 	ia >> *mp;
@@ -82,6 +85,8 @@
 
   void ChatroomClient::write_handler(error_code ec)
 {
+	  
+	  buf.consume(buf.size());
 	if (ec)
 		return;
 }
@@ -102,12 +107,13 @@ void client_message_listener(boost::shared_ptr<ChatMessage> mp)
 ** 参数1：回调函数
 ** 建议开一个新线程来执行本方法
 */
-void client_start(std::string ipv4, boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve, ChatroomClient* ptr)
+ChatroomClient* client_start(std::string ipv4, boost::function<void(boost::shared_ptr<ChatMessage>)> on_recieve)
 {
-	io_service io;
-	ChatroomClient* client = new ChatroomClient(io);
+	io_service* io = new io_service;
+	ChatroomClient* client = new ChatroomClient(*io);
 	client->set_on_recieve(on_recieve);
 	client->start(ipv4);
-	ptr = client;
+	io->poll();
+	return client;
 }
 

@@ -6,6 +6,7 @@ using std::endl;
 #define BOOST_ASIO_DISABLE_STD_CHRONO
 #define BUFFER_SIZE 1024
 #define MAX_SOCKET_AMOUNT 4
+#define CLOCK_TIME boost::posix_time::microseconds(100)
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
 #include<boost/smart_ptr.hpp>
@@ -66,6 +67,11 @@ public:
 	*/
 	void start_accept();
 
+	void timing_thread_func();
+
+	void timer_handler(error_code ec, deadline_timer * timer);
+
+
 	/*
 	** 发送一条消息
 	*/
@@ -89,6 +95,7 @@ private:
 	void write_handler(error_code ec, buffer nbuf);
 
 	void accept_handler(int sockid, error_code ec);
+	void timingPoll();
 	
 };
 /*

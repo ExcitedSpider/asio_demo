@@ -23,7 +23,23 @@
 	socks[current_sock_amount] = s;
 	cout<<current_sock_amount.load()<<endl;
 	ac.async_accept(*socks[current_sock_amount], boost::bind(&ChatroomServer::accept_handler, this, this->current_sock_amount.load(), _1));
+	boost::thread timingThread(boost::bind(&ChatroomServer::timing_thread_func, this));
+	io.poll();
 }
+
+ void ChatroomServer::timing_thread_func()
+ {
+	 auto timer = new deadline_timer(io);
+	 timer->expires_from_now(CLOCK_TIME);
+	 timer->async_wait(boost::bind(&ChatroomServer::timer_handler, this, _1, timer));
+	 io.run();
+ }
+
+ void ChatroomServer::timer_handler(error_code ec, deadline_timer* timer)
+ {
+	 timer->expires_at(timer->expires_at() + CLOCK_TIME);
+	 timer->async_wait(boost::bind(&ChatroomServer::timer_handler, this,_1, timer));
+ }
 
  void ChatroomServer::post(ChatMessage msg)
 {
@@ -62,11 +78,6 @@
 	}
 	io.poll();
 	cout << "broadcast one msg, left : " << ml.size() << " msg(s). " << endl;
-	
-	
-//	if (ml.size())
-//		broadcast();
-
 }
 
  void ChatroomServer::write_handler(error_code ec, buffer nbuf)
@@ -85,13 +96,16 @@
 	++current_sock_amount;
 
 	do_read(sockid);
-	start_accept();
+	if(current_sock_amount!=3)
+		start_accept();
 }
+
 
  void ChatroomServer::do_read(int sockid)
 {
 	boost::shared_array<char> charbuf(new char[BUFFER_SIZE]);
 	socks[sockid]->async_read_some(boost::asio::buffer(charbuf.get(), BUFFER_SIZE), boost::bind(&ChatroomServer::read_handler, this, sockid, charbuf, _1, _2));
+	io.poll();
 }
 
 //use only for debug
@@ -104,6 +118,7 @@
 	msg.playerName = "QE";
 	post(msg);
 }
+
 
  void ChatroomServer::read_handler(int sockid, boost::shared_array<char> charbuf, error_code ec, std::size_t bytes_transferred)
 {

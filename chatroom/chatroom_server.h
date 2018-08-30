@@ -6,7 +6,7 @@ using std::endl;
 #define BOOST_ASIO_DISABLE_STD_CHRONO
 #define BUFFER_SIZE 1024
 #define MAX_SOCKET_AMOUNT 4
-#define CLOCK_TIME boost::posix_time::microseconds(100)
+#define CLOCK_TIME boost::posix_time::milliseconds(100)
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
 #include<boost/smart_ptr.hpp>

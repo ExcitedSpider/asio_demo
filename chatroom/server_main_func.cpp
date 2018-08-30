@@ -10,9 +10,8 @@ int main()
 {
 	ChatroomServer* server = server_start(server_message_listener);
 
-	while (true)
-	{
-		Sleep(1000);
-		server->post_helloworld();
+	while (true) {
+		Sleep(3000);
+	//	server->post_helloworld();
 	}
 }

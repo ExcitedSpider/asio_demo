@@ -29,16 +29,16 @@
 
  void ChatroomServer::timing_thread_func()
  {
-	 auto timer = new deadline_timer(io);
-	 timer->expires_from_now(CLOCK_TIME);
-	 timer->async_wait(boost::bind(&ChatroomServer::timer_handler, this, _1, timer));
+	 auto timer = new deadline_timer(io, CLOCK_TIME);	 timer->async_wait(boost::bind(&ChatroomServer::timer_handler, this, _1, timer));
 	 io.run();
  }
 
  void ChatroomServer::timer_handler(error_code ec, deadline_timer* timer)
  {
+	// cout << "start one timer" << endl;
 	 timer->expires_at(timer->expires_at() + CLOCK_TIME);
 	 timer->async_wait(boost::bind(&ChatroomServer::timer_handler, this,_1, timer));
+	 //io.run();
  }
 
  void ChatroomServer::post(ChatMessage msg)

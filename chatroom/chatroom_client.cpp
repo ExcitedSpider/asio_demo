@@ -25,6 +25,7 @@
 
   void ChatroomClient::post(ChatMessage msg)
 {
+	  cout << "post one msg" << endl;
 	  boost::shared_ptr<std::stringstream> ss(new std::stringstream);
 	  boost::archive::text_oarchive oa(*ss);
 	  oa << msg;

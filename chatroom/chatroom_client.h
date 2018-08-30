@@ -46,6 +46,7 @@ private:
 	streambuf buf;
 	boost::function<void(msg_ptr)> on_recieve;
 	bool is_on_recieve_setted;
+	bool is_connected;
 
 public:
 	/*
@@ -84,10 +85,9 @@ private:
 
 	void connect_handler(error_code ec);
 	void read();
+	void call_callback(msg_ptr mp);
 	void read_handler(error_code ec, size_t bites_trans);
 	
-
-	void write_handler(error_code ec);
 };
 
 /*

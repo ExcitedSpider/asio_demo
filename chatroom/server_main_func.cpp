@@ -1,17 +1,15 @@
 #pragma once
 #include"chatroom_server.h"
-#include<boost/asio/steady_timer.hpp>
-#include<boost/asio/system_timer.hpp>
-#include<boost/asio/high_resolution_timer.hpp>
+#include <boost\random.hpp>
 
 #include <Windows.h>
 
 int main()
 {
 	ChatroomServer* server = server_start(server_message_listener);
-
+	boost::random::mt19937 rng;
 	while (true) {
-		Sleep(3000);
-	//	server->post_helloworld();
+		Sleep(2500);
+		server->post_helloworld();
 	}
 }

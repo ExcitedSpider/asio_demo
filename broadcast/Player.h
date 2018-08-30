@@ -1,4 +1,6 @@
 #pragma once
+#include<string>
+#include <boost/serialization/access.hpp>
 /*
 Description : 游戏人物设定
 Author : 张建东

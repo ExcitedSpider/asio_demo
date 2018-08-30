@@ -6,92 +6,111 @@
 ** 参数1：io_servce
 */
 
-  ChatroomClient::ChatroomClient(io_service & io_) :io(io_), is_on_recieve_setted(false), sock(new ip::tcp::socket(io)) {}
+ChatroomClient::ChatroomClient(io_service & io_) :io(io_), is_on_recieve_setted(false), sock(new ip::tcp::socket(io)), is_connected(false){}
 
 /*
 ** 开启tcp连接
 ** 之后需要io_serce.poll()
 */
 
-  void ChatroomClient::start(std::string ipv4)
+void ChatroomClient::start(std::string ipv4)
 {
 	ip::tcp::endpoint ep(ip::address::from_string(ipv4), 667);
 	sock->async_connect(ep, boost::bind(&ChatroomClient::connect_handler, this, _1));
-	
+
 }
 
- void ChatroomClient::timing_thread_func()
-  {
-	  auto timer = new deadline_timer(io, CLOCK_TIME);	 timer->async_wait(boost::bind(&ChatroomClient::timer_handler, this, _1, timer));
-	  io.run();
-  }
+void ChatroomClient::timing_thread_func()
+{
+	auto timer = new deadline_timer(io, CLOCK_TIME);	 timer->async_wait(boost::bind(&ChatroomClient::timer_handler, this, _1, timer));
+	io.run();
+}
 
- void ChatroomClient::timer_handler(error_code ec, deadline_timer* timer)
-  {
-	   //cout << "start one timer" << endl;
-	  timer->expires_at(timer->expires_at() + CLOCK_TIME);
-	  timer->async_wait(boost::bind(&ChatroomClient::timer_handler, this, _1, timer));
-	  //io.run();
-  }
+void ChatroomClient::timer_handler(error_code ec, deadline_timer* timer)
+{
+	//cout << "start one timer" << endl;
+	timer->expires_at(timer->expires_at() + CLOCK_TIME);
+	timer->async_wait(boost::bind(&ChatroomClient::timer_handler, this, _1, timer));
+	//io.run();
+}
 
 /*
 ** 发送一条消息
 */
 
-  void ChatroomClient::post(ChatMessage msg)
+void ChatroomClient::post(ChatMessage msg)
 {
-	  cout << "post one msg" << endl;
-	  boost::shared_ptr<std::stringstream> ss(new std::stringstream);
-	  boost::archive::text_oarchive oa(*ss);
-	  oa << msg;
-	  string * str = new string(ss->str());
-	  sock->async_write_some(buffer(*str), boost::bind(&ChatroomClient::write_handler, this, _1, str));
-	  io.poll();
+	if (is_connected)
+	{
+		cout << "post one msg" << endl;
+		boost::shared_ptr<std::stringstream> ss(new std::stringstream);
+		boost::archive::text_oarchive oa(*ss);
+		oa << msg;
+		string * str = new string(ss->str());
+		sock->async_write_some(buffer(*str), boost::bind(&ChatroomClient::write_handler, this, _1, str));
+		io.poll();
+	}
+	else
+	{
+		call_callback(msg_ptr(new ChatMessage(msg)));
+	}
 }
 
 /*
 ** 设置回调函数
 */
 
-  void ChatroomClient::set_on_recieve(boost::function<void(msg_ptr)> call_back_func)
+void ChatroomClient::set_on_recieve(boost::function<void(msg_ptr)> call_back_func)
 {
 	if (!is_on_recieve_setted)
 		is_on_recieve_setted = true;
 	on_recieve = call_back_func;
 }
 
-  void ChatroomClient::connect_handler(error_code ec)
+void ChatroomClient::connect_handler(error_code ec)
 {
 	if (ec)
 		return;
+	is_connected = true;
 	read();
-	post_helloworld();
 	boost::thread timingThread(boost::bind(&ChatroomClient::timing_thread_func, this));
+	
 }
 
-  void ChatroomClient::read()
+void ChatroomClient::read()
 {
 	sock->async_read_some(buf.prepare(BUFFER_SIZE), boost::bind(&ChatroomClient::read_handler, this, _1, _2));
 }
 
-  void ChatroomClient::read_handler(error_code ec, size_t bites_trans)
+void ChatroomClient::call_callback(msg_ptr mp)
 {
-	buf.commit(bites_trans);
-	boost::archive::binary_iarchive ia(buf);
-	msg_ptr mp(new ChatMessage);
-	ia >> *mp;
-	buf.consume(bites_trans);
 	if (is_on_recieve_setted)
 		on_recieve(mp);
 	else
 		cout << "on_recieve_func hasn't been setted, call ChatroomServer::set_on_recieve() to set" << endl;
+}
+
+void ChatroomClient::read_handler(error_code ec, size_t bites_trans)
+{
+	try {
+		buf.commit(bites_trans);
+		boost::archive::binary_iarchive ia(buf);
+		msg_ptr mp(new ChatMessage);
+		ia >> *mp;
+		buf.consume(bites_trans);
+		call_callback(mp);
+	}
+	catch (boost::archive::archive_exception e)
+	{
+		cout << "archive_exception occured: " << e.what() << endl;
+	}
 	read();
 }
 
 //use only for debug
 //you are not supposed to use this
 
-  void ChatroomClient::post_helloworld()
+void ChatroomClient::post_helloworld()
 {
 	ChatMessage msg;
 	msg.message = "Hello Client";
@@ -99,9 +118,10 @@
 	post(msg);
 }
 
-  void ChatroomClient::write_handler(error_code ec, string* str)
+void ChatroomClient::write_handler(error_code ec, string* str)
 {
-	  cout << "write handler" << endl;
+	delete str;
+	cout << "write handler" << endl;
 	if (ec)
 		return;
 }

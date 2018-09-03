@@ -4,9 +4,7 @@ using std::cout;
 using std::endl;
 
 #define BOOST_ASIO_DISABLE_STD_CHRONO
-#define BOOST_THREAD_VERSION 5
-#define MAX_SOCKET_AMOUNT 4
-#define BUFFER_SIZE 2048
+#define CLINET_BUFFER_SIZE 4096
 #include<boost/thread.hpp>
 #include<boost/asio.hpp>
 #include<boost/smart_ptr.hpp>
@@ -42,8 +40,8 @@ private:
 	buffers b;
 	sockptr sock;
 	rand rng;
-	Player p;
-	boost::function<void(CommonSetting cs, BroadcastClient* clientptr)> on_status_change_func;
+	st_Player p;
+	boost::function<void(st_CommonSetting cs, BroadcastClient* clientptr)> on_status_change_func;
 	bool is_callback_setted;
 
 	void read();
@@ -59,20 +57,23 @@ private:
 	void write_handler(boost::asio::streambuf *buf, error_code ec);
 
 public:
+	static BroadcastClient* instance;
+
+	static BroadcastClient* getInstance();
 	/*
 	** 构造函数
 	*/
 	BroadcastClient(io_service& io_);
 	void start(std::string ipv4);;
 	/*
-	** 设置客户端的Player状态，在下一帧发送给host
+	** 设置客户端的st_Player状态，在下一帧发送给host
 	*/
-	void set_client_status(Player player);
+	void set_client_status(st_Player st_Player);
 
 	/*
 	** 设置回调
 	*/
-	void on_client_status_change(boost::function<void(CommonSetting cs, BroadcastClient* clientptr)> call_back);
+	void on_client_status_change(boost::function<void(st_CommonSetting cs, BroadcastClient* clientptr)> call_back);
 };
 
 /*
@@ -82,14 +83,14 @@ public:
 ** 回调的示例在下面
 ** 建议开一个新线程来执行本方法
 */
-void start(std::string ipv4, boost::function<void(CommonSetting cs, BroadcastClient* clientptr)> on_status_change_func);
+void start_broadcast_client(std::string ipv4, boost::function<void(st_CommonSetting cs, BroadcastClient* clientptr)> on_status_change_func);
 
 /*
 ** 回调的示例
-** cs: 广播的CommonSetting类; clientptr: 客户端的this指针
+** cs: 广播的st_CommonSetting类; clientptr: 客户端的this指针
 ** 当每次收到host同步广播就会调用这个方法
-** 建议在这个方法中读取commonsetting信息
+** 建议在这个方法中读取st_CommonSetting信息
 ** 并使用	clientptr->set_client_status()来设置新状态，并在下一帧发给host
 */
-void change_listener(CommonSetting cs, BroadcastClient *clientptr);
+void change_listener(st_CommonSetting cs, BroadcastClient *clientptr);
 

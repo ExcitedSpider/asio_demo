@@ -10,6 +10,5 @@ int main()
 	boost::random::mt19937 rng;
 	while (true) {
 		Sleep(2500);
-		server->post_helloworld();
 	}
 }

@@ -10,6 +10,7 @@ ChatroomServer::ChatroomServer(io_service & io_) : io(io_), ac(io, tcp::endpoint
 {
 	current_sock_amount.store(0);
 	current_send_time.store(0);
+	ChatroomServer::instance = this;
 }
 
 /*
@@ -95,6 +96,8 @@ void ChatroomServer::accept_handler(int sockid, error_code ec)
 		return;
 	++current_sock_amount;
 
+	post_networkID(sockid);
+
 	do_read(sockid);
 	if (current_sock_amount != 3)
 		start_accept();
@@ -108,15 +111,20 @@ void ChatroomServer::do_read(int sockid)
 	io.poll();
 }
 
-//use only for debug
-//you are not supposed to use this
-
-void ChatroomServer::post_helloworld()
+//”√¿¥∑÷≈‰NetworkId
+void ChatroomServer::post_networkID(int sockid)
 {
 	ChatMessage msg;
-	msg.message = "Hello Server";
-	msg.playerName = "QE";
-	post(msg);
+	std::stringstream ss;
+	ss << current_sock_amount + 1;
+	msg.message = ss.str();
+	msg.playerName = "GM";
+	
+	buffer nbuf(new streambuf());
+	boost::archive::binary_oarchive oa(*nbuf);
+	oa << msg;
+	socks[sockid]->async_write_some(nbuf->data(), boost::bind(&ChatroomServer::write_handler, this, _1, nbuf));
+
 }
 
 
@@ -143,6 +151,12 @@ void ChatroomServer::read_handler(int sockid, boost::shared_array<char> charbuf,
 	}
 
 
+}
+ChatroomServer * ChatroomServer::instance = nullptr;
+
+ChatroomServer * ChatroomServer::get_instance()
+{
+	return ChatroomServer::instance;
 }
 
 /*

@@ -45,6 +45,8 @@ class ChatroomServer
 	typedef boost::shared_ptr<boost::asio::streambuf> buffer;
 
 private:
+
+	static ChatroomServer* instance;
 	sptrvec socks;
 	io_service& io;
 	boost::atomic<int> current_sock_amount;
@@ -84,19 +86,18 @@ public:
 
 	void do_read(int sockid);
 
-	void post_helloworld();
+	void post_networkID(int sockid);
 
 	void read_handler(int sockid, boost::shared_array<char> charbuf, error_code ec, std::size_t bytes_transferred);
 
+	static ChatroomServer* get_instance();
 
 private:
 
 	void broadcast();
 	void write_handler(error_code ec, buffer nbuf);
 
-	void accept_handler(int sockid, error_code ec);
-	void timingPoll();
-	
+	void accept_handler(int sockid, error_code ec);	
 };
 /*
 ** 这个是回调函数的示例

@@ -11,6 +11,5 @@ int main()
 	while (true)
 	{
 		Sleep(1500);
-		client->post_helloworld();
 	}
 }

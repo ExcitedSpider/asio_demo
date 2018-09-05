@@ -41,6 +41,7 @@ class ChatroomClient
 	typedef boost::shared_ptr<ChatMessage> msg_ptr;
 
 private:
+	static ChatroomClient* instance;
 	io_service& io;
 	sockptr sock;
 	streambuf buf;
@@ -80,6 +81,9 @@ public:
 	void post_helloworld();
 
 	void write_handler(error_code ec, string * str);
+
+	static ChatroomClient* get_instance();
+
 
 private:
 

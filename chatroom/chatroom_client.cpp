@@ -1,12 +1,18 @@
 #pragma once
 #include "chatroom_client.h"
 
+ChatroomClient* ChatroomClient::instance = nullptr;
+
 /*
 ** 构造函数。
 ** 参数1：io_servce
 */
 
-ChatroomClient::ChatroomClient(io_service & io_) :io(io_), is_on_recieve_setted(false), sock(new ip::tcp::socket(io)), is_connected(false){}
+ChatroomClient::ChatroomClient(io_service & io_) :io(io_), is_on_recieve_setted(false), 
+sock(new ip::tcp::socket(io)), is_connected(false)
+{
+	ChatroomClient::instance = this;
+}
 
 /*
 ** 开启tcp连接
@@ -124,6 +130,11 @@ void ChatroomClient::write_handler(error_code ec, string* str)
 	cout << "write handler" << endl;
 	if (ec)
 		return;
+}
+
+ChatroomClient * ChatroomClient::get_instance()
+{
+	return ChatroomClient::instance;
 }
 
 /*

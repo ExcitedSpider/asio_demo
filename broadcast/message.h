@@ -1,23 +1,23 @@
 #pragma once
-#include"Player.h"
-#include"CommonSetting.h"
+#include"st_Player.h"
+#include"st_CommonSetting.h"
 struct client_message
 {
-	Player player;
+	st_Player Player;
 
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)
 	{
-		ar & player;
+		ar & Player;
 	}
 	friend class boost::serialization::access;
 
-	client_message(Player p) :player(p) {};
+	client_message(st_Player p) :Player(p) {};
 	client_message() {};
 };
 struct broadcast_message
 {
-	CommonSetting cs;
+	st_CommonSetting cs;
 
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)
@@ -25,7 +25,7 @@ struct broadcast_message
 		ar & cs;
 	}
 
-	broadcast_message(CommonSetting cs_) : cs(cs_) {}
+	broadcast_message(st_CommonSetting cs_) : cs(cs_) {}
 	broadcast_message() {};
 
 	friend class boost::serialization::access;

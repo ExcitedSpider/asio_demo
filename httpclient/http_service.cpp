@@ -17,12 +17,12 @@ HttpService * HttpService::getInstance()
 
 }
 
-void HttpService::joinRoom(std::string ipv4)
+void HttpService::joinRoom(std::string ipv4, std::string playerName)
 {
 	HttpRequest* request = new HttpRequest();
 	request->setRequestType(HttpRequest::Type::POST);
 	std::stringstream ss;
-	ss << "http:/SERVER_IP:8080/join_room?ipv4=" << ipv4;
+	ss << "http://"<<SERVER_IP<<":8080/join_room?ipv4=" << ipv4<<"&playername="<< playerName;
 	request->setUrl(ss.str());
 	request->setResponseCallback(boost::bind(&HttpService::joinroom_callback, this, _1,_2));
 	request->setTag("Join Room");
@@ -30,12 +30,12 @@ void HttpService::joinRoom(std::string ipv4)
 	request->release();
 }
 
-void HttpService::openRoom(std::string ipv4)
+void HttpService::openRoom(std::string ipv4, std::string playername)
 {
 	HttpRequest* request = new HttpRequest();
 	request->setRequestType(HttpRequest::Type::POST);
 	std::stringstream ss;
-	ss << "http://"<< SERVER_IP <<":8080/open_room?ipv4=" << ipv4;
+	ss << "http://"<< SERVER_IP <<":8080/open_room?ipv4=" << ipv4<<"&playername="<<playername;
 	request->setUrl(ss.str());
 	request->setResponseCallback(boost::bind(&HttpService::joinroom_callback, this, _1, _2));
 	request->setTag("Open Rooms");
@@ -44,11 +44,26 @@ void HttpService::openRoom(std::string ipv4)
 
 }
 
+void HttpService::leaveRoom(std::string ipv4)
+{
+	HttpRequest* request = new HttpRequest();
+	request->setRequestType(HttpRequest::Type::GET);
+	std::stringstream ss;
+	ss << "http://" << SERVER_IP << ":8080/leave_room?ipv4=" << ipv4;
+	request->setUrl(ss.str());
+	request->setResponseCallback(boost::bind(&HttpService::leaveroom_callback, this, _1, _2));
+	request->setTag("Open Rooms");
+	HttpClient::getInstance()->send(request);
+	request->release();
+}
+
 void HttpService::getRoomsViaHttp()
 {
 	HttpRequest* request = new HttpRequest();
 	request->setRequestType(HttpRequest::Type::GET);
-	request->setUrl("http://SERVER_IP:8080/get_rooms");
+	std::stringstream ss;
+	ss << "http://" << SERVER_IP << ":8080/get_rooms";
+	request->setUrl(ss.str());
 	request->setResponseCallback(boost::bind(&HttpService::getroom_callback,this,_1,_2));
 	request->setTag("Get Rooms");
 	HttpClient::getInstance()->send(request);
@@ -76,7 +91,10 @@ room_list_type * HttpService::parseRoomListJson(const char * json)
 		cocos2d::log("parse Json error");
 		return new room_list_type();
 	}
-	if (d.IsObject() && d.HasMember("roomAmount") && d.HasMember("errorCode") && d.HasMember("roomlist"))
+	if (d.IsObject() && d.HasMember("roomAmount") && 
+		d.HasMember("errorCode") && 
+		d.HasMember("roomlist") &&
+		d.HasMember("nameList"))
 	{
 		if (d["errorCode"].GetInt())
 		{
@@ -94,6 +112,11 @@ room_list_type * HttpService::parseRoomListJson(const char * json)
 				auto object = roomArray[i].GetObjectW();
 				auto room = new st_room;
 				room->ipv4 = object["ipv4"].GetString();
+				auto namelist = object["nameList"].GetArray();
+				for (int i = 0; i < namelist.Size(); i++)
+				{
+					room->nameList.push_back(namelist[i].GetString());
+				}
 				room->playernum = object["playerNum"].GetInt();
 				rl->push_back(room_ptr_type(room));
 			}
@@ -162,4 +185,8 @@ void HttpService::joinroom_callback(HttpClient * sender, HttpResponse * response
 	{
 		cocos2d::log("have not set join room callback in httpservice!");
 	}
+}
+
+void HttpService::leaveroom_callback(HttpClient * sender, HttpResponse * response)
+{
 }

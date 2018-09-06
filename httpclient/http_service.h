@@ -27,8 +27,8 @@ private:
 	static HttpService* instance;
 public:
 	static HttpService* getInstance();
-	void joinRoom(std::string ipv4);
-	void openRoom(std::string ipv4);
+	void joinRoom(std::string ipv4, std::string playerName);
+	void openRoom(std::string ipv4, std::string playername);
 	void getRoomsViaHttp();
 	void set_getrooms_cb(boost::function<void(room_list_type *)> callback);
 	void set_joinroom_cb(boost::function<void(bool)> callback);

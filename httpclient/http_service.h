@@ -29,6 +29,7 @@ public:
 	static HttpService* getInstance();
 	void joinRoom(std::string ipv4, std::string playerName);
 	void openRoom(std::string ipv4, std::string playername);
+	void leaveRoom(std::string ipv4);
 	void getRoomsViaHttp();
 	void set_getrooms_cb(boost::function<void(room_list_type *)> callback);
 	void set_joinroom_cb(boost::function<void(bool)> callback);
@@ -38,4 +39,6 @@ private:
 	const room_ptr_type parseRoomJson(const char * json);
 	void getroom_callback(HttpClient *sender, HttpResponse *response);
 	void joinroom_callback(HttpClient *sender, HttpResponse *response);
+	void leaveroom_callback(HttpClient *sender, HttpResponse *response);
+
 };

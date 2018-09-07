@@ -73,6 +73,18 @@ void ChatroomClient::set_on_recieve(boost::function<void(msg_ptr)> call_back_fun
 	on_recieve = call_back_func;
 }
 
+void ChatroomClient::post_client_name()
+{
+		boost::shared_ptr<std::stringstream> ss(new std::stringstream);
+		boost::archive::text_oarchive oa(*ss);
+		oa << msg;
+		string * str = new string(ss->str());
+		sock->async_write_some(buffer(*str), boost::bind(&ChatroomClient::write_handler, this, _1, str));
+		io.poll();
+		call_callback(msg_ptr(new ChatMessage(msg)));
+
+}
+
 void ChatroomClient::connect_handler(error_code ec)
 {
 	if (ec)

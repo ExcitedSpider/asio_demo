@@ -85,7 +85,9 @@ public:
 	static ChatroomClient* get_instance();
 
 
+
 private:
+	void post_client_name();
 
 	void connect_handler(error_code ec);
 	void read();

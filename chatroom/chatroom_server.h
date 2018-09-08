@@ -53,7 +53,7 @@ private:
 	ip::tcp::acceptor ac;
 	boost::atomic<int> current_send_time;
 	msglist ml;
-	streambuf buf;
+	boost::asio::streambuf buf;
 	boost::function<void(msg_ptr)> on_recieve;
 	bool is_on_recieve_setted;
 
@@ -71,7 +71,7 @@ public:
 
 	void timing_thread_func();
 
-	void timer_handler(error_code ec, deadline_timer * timer);
+	void timer_handler(boost::system::error_code ec, deadline_timer * timer);
 
 
 	/*
@@ -88,16 +88,18 @@ public:
 
 	void post_networkID(int sockid);
 
-	void read_handler(int sockid, boost::shared_array<char> charbuf, error_code ec, std::size_t bytes_transferred);
+	void read_handler(int sockid, boost::shared_array<char> charbuf, boost::system::error_code ec, std::size_t bytes_transferred);
 
 	static ChatroomServer* get_instance();
+
+	void post_hosthasleave();
 
 private:
 
 	void broadcast();
-	void write_handler(error_code ec, buffer nbuf);
+	void write_handler(boost::system::error_code ec, buffer nbuf);
 
-	void accept_handler(int sockid, error_code ec);	
+	void accept_handler(int sockid, boost::system::error_code ec);
 };
 /*
 ** 这个是回调函数的示例

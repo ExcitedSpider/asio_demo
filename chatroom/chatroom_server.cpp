@@ -34,7 +34,7 @@ void ChatroomServer::timing_thread_func()
 	io.run();
 }
 
-void ChatroomServer::timer_handler(error_code ec, deadline_timer* timer)
+void ChatroomServer::timer_handler(boost::system::error_code ec, deadline_timer* timer)
 {
 	// cout << "start one timer" << endl;
 	timer->expires_at(timer->expires_at() + CLOCK_TIME);
@@ -46,7 +46,7 @@ void ChatroomServer::post(ChatMessage msg)
 {
 	msg_ptr mp(new ChatMessage(msg));
 	ml.push_back(mp);
-	error_code ec;
+	boost::system::error_code ec;
 	broadcast();
 }
 
@@ -81,7 +81,7 @@ void ChatroomServer::broadcast()
 	cout << "broadcast one msg, left : " << ml.size() << " msg(s). " << endl;
 }
 
-void ChatroomServer::write_handler(error_code ec, buffer nbuf)
+void ChatroomServer::write_handler(boost::system::error_code ec, buffer nbuf)
 {
 	//delete nbuf;
 	if (ec)
@@ -128,7 +128,7 @@ void ChatroomServer::post_networkID(int sockid)
 }
 
 
-void ChatroomServer::read_handler(int sockid, boost::shared_array<char> charbuf, error_code ec, std::size_t bytes_transferred)
+void ChatroomServer::read_handler(int sockid, boost::shared_array<char> charbuf, boost::system::error_code ec, std::size_t bytes_transferred)
 {
 	if (ec)
 		return;
@@ -157,6 +157,22 @@ ChatroomServer * ChatroomServer::instance = nullptr;
 ChatroomServer * ChatroomServer::get_instance()
 {
 	return ChatroomServer::instance;
+}
+
+void ChatroomServer::post_hosthasleave()
+{
+	ChatMessage msg;
+	msg.playerName = "GM3";
+	msg.message = "host has left the room";
+	for (int i = 0; i < current_sock_amount; ++i)
+	{
+		buffer nbuf(new streambuf());
+		boost::archive::binary_oarchive oa(*nbuf);
+		oa << msg;
+		socks[i]->async_write_some(nbuf->data(), boost::bind(&ChatroomServer::write_handler, this, _1, nbuf));
+	}
+	io.poll();
+
 }
 
 /*
